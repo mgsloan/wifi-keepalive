@@ -55,8 +55,10 @@ limit = 3
 -- | Restart the wireless connection.
 restart :: Client -> IO ()
 restart client = do
-  setWirelessEnabled client False
-  setWirelessEnabled client True
+  -- setWirelessEnabled client False
+  -- setWirelessEnabled client True
+  system "nmcli nm wifi off"
+  system "nmcli nm wifi on"
   notify "Restarted connection."
 
 -- | Sleep for n seconds.
