@@ -12,21 +12,18 @@ import Control.Concurrent
 import Control.Exception (catch,IOException)
 import Control.Monad
 import Data.Maybe
-import NM
+import Prelude hiding (catch)
 import Safe
 import System.IO
-import System.Libnotify
 import System.Process
 import System.Timeout
 
 -- | Main entry point.
 main :: IO ()
 main = do
-  client <- newClient
   pingavg <- getPingAverage
   case readMay pingavg :: Maybe Float of
-    Nothing -> do notify "Disconnected from network."
-                  restart client
+    Nothing -> do restart
                   sleep wait
                   main
     Just{} -> do sleep 1
@@ -53,22 +50,16 @@ limit :: Int
 limit = 3
 
 -- | Restart the wireless connection.
-restart :: Client -> IO ()
-restart client = do
-  -- setWirelessEnabled client False
-  -- setWirelessEnabled client True
+restart :: IO ()
+restart = do
   system "nmcli nm wifi off"
   system "nmcli nm wifi on"
-  notify "Restarted connection."
+  return ()
 
 -- | Sleep for n seconds.
 sleep :: Int -> IO ()
 sleep n = do
   threadDelay (1000 * 1000 * n)
-
--- | Notify with desktop notifications.
-notify :: Body -> IO ()
-notify msg = void (oneShot "Wifi-KeepAlive" msg "" Nothing)
 
 -- | Call an interactive command, returning empty string on an
 -- exception after limit seconds.
@@ -80,6 +71,7 @@ getCmdLine limit string =
                                          (hGetLine out)))
                           (const (return "") :: IOException -> IO String)
             terminateProcess pid
+            waitForProcess pid
             return line)
         (\(e::IOException) -> do print e
                                  return "")
