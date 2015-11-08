@@ -14,6 +14,7 @@ import Control.Monad
 import Data.Maybe
 import Prelude hiding (catch)
 import Safe
+import System.Exit
 import System.IO
 import System.Process
 import System.Timeout
@@ -21,13 +22,24 @@ import System.Timeout
 -- | Main entry point.
 main :: IO ()
 main = do
+  ec <- system "nmcli nm"
+  case ec of
+    ExitSuccess -> mainLoop "nm"
+    _ -> do
+      ec' <- system "nmcli radio"
+      case ec' of
+        ExitSuccess -> mainLoop "radio"
+        _ -> fail "Failed to run 'nmcli nm' or 'nmcli radio'"
+
+mainLoop :: String -> IO ()
+mainLoop nmObj = do
   pingavg <- getPingAverage
   case readMay pingavg :: Maybe Float of
-    Nothing -> do restart
+    Nothing -> do restart nmObj
                   sleep wait
-                  main
+                  mainLoop nmObj
     Just{} -> do sleep 1
-                 main
+                 mainLoop nmObj
 
 -- | Awful but it turns out the ping command isn't actually that
 -- awesome for getting what you want. The timeouts are also
@@ -50,10 +62,10 @@ limit :: Int
 limit = 3
 
 -- | Restart the wireless connection.
-restart :: IO ()
-restart = do
-  system "nmcli nm wifi off"
-  system "nmcli nm wifi on"
+restart :: String -> IO ()
+restart nmObj = do
+  system ("nmcli " ++ nmObj ++ " wifi off")
+  system ("nmcli " ++ nmObj ++ " wifi on")
   return ()
 
 -- | Sleep for n seconds.
